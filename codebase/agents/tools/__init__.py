@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 
 from .clarify.tool import ask_user
+from .generate_learning_material.tool import generate_learning_material
 from .search_device_info.tool import search_device_info
 
 
@@ -16,6 +17,7 @@ from .search_device_info.tool import search_device_info
 # Otherwise the eval raises "not declared in tools.yaml" or scores every call as a name mismatch.
 TOOL_FUNCTIONS = {
     "clarify": ask_user,
+    "generate_learning_material": generate_learning_material,
     "search_device_info": search_device_info,
 }
 

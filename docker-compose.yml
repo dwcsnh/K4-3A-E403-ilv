@@ -1,0 +1,22 @@
+services:
+  classroom-cli:
+    build:
+      context: .
+      dockerfile: codebase/agents/Dockerfile
+      args:
+        INSTALL_DOCLING: ${INSTALL_DOCLING:-false}
+    working_dir: /app/codebase/agents
+    stdin_open: true
+    tty: true
+    init: true
+    env_file:
+      - ./codebase/agents/.env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./codebase/agents:/app/codebase/agents
+    command: >
+      python classroom_cli.py
+      --provider ${CLASSROOM_PROVIDER:-openai}
+      --slide-file ${SLIDE_FILE:-data/slides/d1-slide-hackathon.pdf}
+      ${CLASSROOM_EXTRA_ARGS:-}

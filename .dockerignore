@@ -1,0 +1,9 @@
+.git
+.gitignore
+.agents
+.codex
+**/__pycache__/
+**/*.pyc
+codebase/agents/.venv/
+codebase/agents/.env
+codebase/agents/data/ingested/

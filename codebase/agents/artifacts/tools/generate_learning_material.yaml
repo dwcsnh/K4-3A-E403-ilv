@@ -1,0 +1,100 @@
+tools:
+  - name: generate_learning_material
+    description: >-
+      Tạo học liệu ôn tập dựa trên phần bài giảng mà học viên đã học tới.
+      Tool này chuẩn hóa đầu ra: quiz và flashcard được serialize thành JSON,
+      mindmap được serialize thành XML.
+    parameters:
+      type: object
+      properties:
+        material_type:
+          type: string
+          enum: [quiz, flashcard, mindmap]
+          description: "Loại học liệu cần tạo."
+        title:
+          type: string
+          description: "Tiêu đề ngắn gọn của học liệu."
+        language:
+          type: string
+          enum: [vi, en]
+          default: vi
+          description: "Ngôn ngữ của học liệu."
+        covered_until:
+          type: string
+          description: "Mốc tiến độ học hiện tại, ví dụ slide 12 hoặc 08:35."
+        instructions:
+          type: string
+          description: "Ghi chú bổ sung về độ khó hoặc mục tiêu ôn tập."
+        quiz_items:
+          type: array
+          description: "Danh sách câu hỏi cho học liệu dạng quiz."
+          items:
+            type: object
+            properties:
+              question:
+                type: string
+              options:
+                type: array
+                items:
+                  type: string
+                minItems: 2
+              correct_option:
+                type: string
+              explanation:
+                type: string
+              citations:
+                type: array
+                items:
+                  type: string
+            required: [question, options, correct_option, explanation, citations]
+        flashcards:
+          type: array
+          description: "Danh sách flashcard theo cặp mặt trước/mặt sau."
+          items:
+            type: object
+            properties:
+              front:
+                type: string
+              back:
+                type: string
+              citations:
+                type: array
+                items:
+                  type: string
+            required: [front, back, citations]
+        mindmap:
+          type: object
+          description: "Cấu trúc cây cho mindmap."
+          properties:
+            root_topic:
+              type: string
+            citations:
+              type: array
+              items:
+                type: string
+            branches:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      type: string
+                  children:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          type: string
+                        citations:
+                          type: array
+                          items:
+                            type: string
+                      required: [label]
+                required: [label]
+          required: [root_topic, branches]
+      required: [material_type, title, language, covered_until]
