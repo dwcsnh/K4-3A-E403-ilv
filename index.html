@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Learn · Mini Hackathon AI (Multi-Agent Assistant)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- ==========================================================================
+       TOP BAR (Executive Style: White surfaces, Deep slate actions, Pill controls)
+       ========================================================================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="btn-icon-nav" id="backHomeBtn" title="Quay lại danh sách khóa học">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+      <div class="course-info">
+        <div class="course-title">
+          <span>Bài 16 · MINI HACKATHON</span>
+          <span style="font-weight: 400; color: var(--slate-400);">/</span>
+          <span style="font-size: 13px; font-weight: 600; color: var(--slate-600);">Batch 04 · Lớp 3A</span>
+        </div>
+        <div class="course-meta">Phòng E403 · Hạn chốt CP2: 21:00 (Luồng hoạt động tương tác)</div>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <div class="progress-pill">
+        <span id="topbarProgressLabel">Tiến độ: 3/6 bài</span>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="topbarProgressBar" style="width: 50%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Deep slate action button for Multi-Agent AI -->
+      <button class="btn-executive-dark active-pulse" id="toggleAiDrawerBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        <span>Trợ lý AI</span>
+      </button>
+
+      <button class="btn-executive-outline" id="submitLabBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        <span>Nộp bài & Đánh giá</span>
+      </button>
+
+      <div class="user-avatar-pill" title="Học viên: TUẤN (K4-3A-E403)">T</div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN APP WORKSPACE
+       ========================================================================== -->
+  <div class="app-container">
+
+    <!-- CỘT TRÁI: DANH SÁCH SLIDE / BÀI GIẢNG -->
+    <aside class="sidebar-left" id="sidebarLeft">
+      <div class="sidebar-header">
+        <div class="sidebar-title-badge">
+          <span class="sidebar-heading">NỘI DUNG BÀI HỌC</span>
+          <span class="track-pill">Track C · Multi-Agent</span>
+        </div>
+        <div class="module-meta-title">k4-3a-d05-06-ai-product</div>
+      </div>
+
+      <div class="slide-list-wrap" id="slideListContainer">
+        <!-- Slide Items rendered dynamically by JS -->
+      </div>
+    </aside>
+
+    <!-- KHUNG TRUNG GIAN: SLIDE VIEWER (STAGE) -->
+    <main class="main-stage">
+      <div class="stage-toolbar">
+        <div class="stage-toolbar-left">
+          <span class="stage-badge" id="slideBreadcrumb">Khung xem slide bài giảng</span>
+        </div>
+        <div class="stage-toolbar-right">
+          <button class="btn-executive-outline" id="btnZoomOut" title="Thu nhỏ">－</button>
+          <span style="font-size: 12px; font-weight: 600; color: var(--slate-600);" id="zoomLevel">100%</span>
+          <button class="btn-executive-outline" id="btnZoomIn" title="Phóng to">＋</button>
+          <button class="btn-executive-outline" id="btnFullscreen" title="Toàn màn hình">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="stage-canvas-area" id="stageCanvasArea">
+        <!-- Presentation Slide Card -->
+        <div class="presentation-card" id="presentationCard">
+          <div class="presentation-card-header">
+            <div>
+              <div class="slide-category-pill" id="slideCategoryPill">
+                <span id="slideCategoryText">MODULE 3 · THIẾT KẾ TRẢI NGHIỆM</span>
+              </div>
+              <h1 class="slide-main-title" id="slideMainTitle">Thiết kế luồng trải nghiệm UX & Tương tác Multi-Agent
+              </h1>
+              <div class="slide-main-subtitle" id="slideMainSubtitle">Xây dựng kiến trúc hỗ trợ người học theo 3 vai
+                trò: Giảng viên, Bạn học và Bộ sinh tài liệu (LMG).</div>
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--slate-400);" id="slideHeaderIndex">03/06</div>
+          </div>
+
+          <div class="presentation-card-body" id="presentationCardBody">
+            <!-- Dynamic Slide Content rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Pill-shaped Navigation Dock at the bottom -->
+        <div class="stage-navigation-dock">
+          <button class="dock-btn" id="prevSlideBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Slide trước</span>
+          </button>
+
+          <div class="dock-counter" id="slideCounterText">Slide 3 / 6</div>
+
+          <button class="dock-btn" id="nextSlideBtn">
+            <span>Slide tiếp theo</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- CỘT PHẢI: KHUNG CHAT TRỢ LÝ AI (MULTI-AGENT DRAWER) -->
+    <aside class="assistant-drawer" id="assistantDrawer">
+
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div class="drawer-top-row">
+          <div class="drawer-brand">
+            <div class="drawer-brand-icon">✦</div>
+            <div class="drawer-brand-title">Trợ lý AI Đa tác tử</div>
+          </div>
+          <div class="drawer-actions">
+            <button class="btn-drawer-tool" id="resetChatBtn" title="Tạo phiên chat mới">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <button class="btn-drawer-tool" id="closeDrawerBtn" title="Đóng khung chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Agent Choice Pills (Multi-Agent Switcher) -->
+        <div class="agent-switcher-container" id="agentSwitcher">
+          <button class="agent-tab active" data-agent="teacher">
+            <span>👨‍🏫</span>
+            <span>Giảng viên</span>
+          </button>
+          <button class="agent-tab" data-agent="study">
+            <span>🧑‍🎓</span>
+            <span>Bạn học</span>
+          </button>
+          <button class="agent-tab" data-agent="lmg">
+            <span>⚡</span>
+            <span>LMG Studio</span>
+          </button>
+        </div>
+
+        <!-- Current Slide Context Pinning -->
+        <div class="context-sync-pill">
+          <span>📌 Đang ghim ngữ cảnh:</span>
+          <strong id="contextSlideLabel">Slide 3 · Thiết kế luồng UX</strong>
+        </div>
+      </div>
+
+      <!-- Drawer Body: Intro Card, Chat Stream & LMG Studio Outputs -->
+      <div class="drawer-body" id="drawerBody">
+
+        <!-- Agent Intro Banner (Biến mất khi bắt đầu chat hoặc click prompt) -->
+        <div class="agent-intro-banner theme-teacher" id="agentIntroBanner">
+          <div class="intro-badge-role" id="introBadgeRole">
+            <span>👨‍🏫</span>
+            <span id="introRoleText">Teaching Agent</span>
+          </div>
+          <h2 class="intro-title" id="introTitle">Chào bạn, tôi là Giảng viên AI!</h2>
+          <p class="intro-desc" id="introDesc">
+            Tôi đồng hành giải thích cặn kẽ từng khái niệm trong slide, phân tích các ca sử dụng thực tế và sẵn sàng đặt
+            câu hỏi kiểm tra độ hiểu bài của bạn.
+          </p>
+
+          <!-- Dynamic Prompts / Studio Tools based on Agent -->
+          <div id="introActionsArea">
+            <div class="quick-prompts-title">Gợi ý tương tác nhanh:</div>
+            <div class="quick-prompts-wrap" id="quickPromptsWrap">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Stream Messages -->
+        <div class="chat-stream-container" id="chatStreamContainer">
+          <!-- Chat messages appear here -->
+        </div>
+
+        <!-- Dynamic LMG Output Area (Quiz, Flashcard, Mindmap, Summary) -->
+        <div id="lmgInteractiveArea" style="display: none;">
+          <!-- Generated interactive cards appear here -->
+        </div>
+
+      </div>
+
+      <!-- Drawer Footer: Message Input -->
+      <div class="drawer-footer">
+        <div class="chat-input-wrapper">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Hỏi giảng viên về nội dung slide này..."
+            autocomplete="off" />
+          <button class="btn-send-message" id="sendBtn" title="Gửi tin nhắn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <div class="input-helper-legend">Nhấn Enter để gửi tin nhắn · Tương tác có thể chuyển giao giữa 3 Agent bất kỳ
+          lúc nào</div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
