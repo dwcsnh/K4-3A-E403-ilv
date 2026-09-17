@@ -1,0 +1,2583 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Agent Classroom Prototype | AI20K EdTech</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & CSS RESET
+       ========================================================================== */
+    :root {
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Colors */
+      --bg-main: #0b0f19;
+      --bg-surface: #111827;
+      --bg-surface-elevated: #1a2234;
+      --bg-surface-glass: rgba(17, 24, 39, 0.75);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+
+      /* Agent Palette */
+      --teacher-color: #6366f1;
+      --teacher-light: rgba(99, 102, 241, 0.15);
+      --teacher-border: rgba(99, 102, 241, 0.35);
+
+      --student-color: #10b981;
+      --student-light: rgba(16, 185, 129, 0.15);
+      --student-border: rgba(16, 185, 129, 0.35);
+
+      --generator-color: #f59e0b;
+      --generator-light: rgba(245, 158, 11, 0.15);
+      --generator-border: rgba(245, 158, 11, 0.35);
+
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --glass-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Top Global Header */
+    .global-nav {
+      height: 56px;
+      background: rgba(17, 24, 39, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      background: var(--accent-gradient);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      color: white;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.4);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      margin-left: 6px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .screen-switcher {
+      display: flex;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 3px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .switch-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-normal);
+    }
+
+    .switch-btn.active {
+      background: var(--bg-surface-elevated);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .switch-btn:hover:not(.active) {
+      color: #fff;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 10px 4px 6px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .user-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Container Views */
+    .view-container {
+      display: none !important;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .view-container.active-view {
+      display: flex !important;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       SCREEN 1: MÀN HÌNH BÀI GIẢNG (SLIDE VIEW)
+       ========================================================================== */
+    .lesson-view {
+      width: 100%;
+      height: calc(100vh - 56px);
+    }
+
+    /* Lesson Sidebar */
+    .lesson-sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .course-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .course-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #a855f7;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .course-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .progress-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 45%;
+      background: var(--accent-gradient);
+      border-radius: 4px;
+    }
+
+    .lesson-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .lesson-item {
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: var(--transition-fast);
+      border: 1px solid transparent;
+      background: transparent;
+      text-align: left;
+      width: 100%;
+    }
+
+    .lesson-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .lesson-item.active {
+      background: var(--bg-surface-elevated);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .lesson-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .lesson-item.active .lesson-number {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .lesson-item.completed .lesson-number {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .lesson-info {
+      flex: 1;
+    }
+
+    .lesson-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .lesson-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Lesson Main Content */
+    .lesson-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-main);
+      overflow-y: auto;
+    }
+
+    .lesson-content-header {
+      padding: 16px 28px;
+      background: rgba(17, 24, 39, 0.5);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .lesson-breadcrumb {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .lesson-breadcrumb span {
+      color: var(--text-secondary);
+    }
+
+    .lesson-main-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Call to Action Button: Multi-Agent Classroom */
+    .btn-enter-classroom {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+      transition: all var(--transition-normal);
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    .btn-enter-classroom:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 25px rgba(219, 39, 119, 0.5);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        box-shadow: 0 4px 18px rgba(124, 58, 237, 0.35);
+      }
+      50% {
+        box-shadow: 0 4px 28px rgba(219, 39, 119, 0.6);
+      }
+    }
+
+    /* Slide Stage */
+    .slide-stage-wrapper {
+      flex: 1;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .slide-canvas {
+      width: 100%;
+      max-width: 960px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 36px 44px;
+      min-height: 480px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-canvas::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .slide-header-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .slide-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .slide-body {
+      color: #d1d5db;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* Visual Diagrams inside slides */
+    .attention-diagram-box {
+      margin-top: 24px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 16px;
+      position: relative;
+    }
+
+    .vector-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-surface-elevated);
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      font-weight: 700;
+      font-size: 14px;
+      transition: var(--transition-fast);
+    }
+
+    .vector-node.q { border-color: #6366f1; color: #818cf8; }
+    .vector-node.k { border-color: #ec4899; color: #f472b6; }
+    .vector-node.v { border-color: #10b981; color: #34d399; }
+
+    .vector-desc {
+      font-size: 11px;
+      font-weight: normal;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .diagram-operator {
+      font-size: 18px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .formula-badge {
+      font-family: var(--font-mono);
+      background: rgba(0, 0, 0, 0.5);
+      color: #38bdf8;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 14px;
+      display: inline-block;
+    }
+
+    /* Slide Navigation Footer */
+    .slide-footer-nav {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0 24px 0;
+    }
+
+    .slide-indicator {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .slide-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-slide-nav {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+    }
+
+    .btn-slide-nav:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-slide-nav:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ==========================================================================
+       SCREEN 2: MÀN HÌNH MULTI-AGENT CLASSROOM (3 CỘT)
+       ========================================================================== */
+    .classroom-view {
+      width: 100%;
+      height: calc(100vh - 56px);
+      flex-direction: column;
+    }
+
+    /* Sub-header inside Classroom */
+    .classroom-top-bar {
+      height: 48px;
+      background: rgba(17, 24, 39, 0.95);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .back-to-lesson-btn {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+    }
+
+    .back-to-lesson-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .classroom-status-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #34d399;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .classroom-mode-select {
+      display: flex;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .mode-tab {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .mode-tab.active {
+      background: var(--bg-surface-elevated);
+      color: #fff;
+    }
+
+    /* 3-Column Layout */
+    .classroom-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr 380px;
+      overflow: hidden;
+      background: var(--bg-main);
+    }
+
+    /* COLUMN 1: LEFT SIDEBAR (Agents & History) */
+    .col-agents-sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 14px 16px 8px 16px;
+    }
+
+    .agent-cards-list {
+      padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .agent-card {
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: var(--transition-fast);
+      position: relative;
+    }
+
+    .agent-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .agent-card.active {
+      background: var(--bg-surface-elevated);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .agent-card.teacher.active { border-color: var(--teacher-border); background: var(--teacher-light); }
+    .agent-card.student.active { border-color: var(--student-border); background: var(--student-light); }
+    .agent-card.generator.active { border-color: var(--generator-border); background: var(--generator-light); }
+
+    .agent-avatar-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .avatar-teacher { background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; }
+    .avatar-student { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
+    .avatar-generator { background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; }
+    .avatar-roundtable { background: var(--accent-gradient); color: #fff; }
+
+    .agent-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .agent-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .agent-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-role-pill {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .role-teacher { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+    .role-student { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .role-gen { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+
+    .agent-status-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-history-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition-fast);
+      border: 1px solid transparent;
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: #fff;
+    }
+
+    .history-item.active {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #fff;
+    }
+
+    /* COLUMN 2: CENTER CHAT CONTENT */
+    .col-chat-main {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-main);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .chat-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Message bubbles */
+    .msg-row {
+      display: flex;
+      gap: 12px;
+      max-width: 85%;
+      animation: msgAppear 0.25s ease-out;
+    }
+
+    @keyframes msgAppear {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .msg-avatar.user-av {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .msg-content-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .msg-author-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .msg-author-name {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .msg-role-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .msg-time {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .msg-bubble {
+      padding: 14px 18px;
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      line-height: 1.6;
+      color: #f3f4f6;
+      position: relative;
+    }
+
+    .msg-bubble.teacher {
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-top-left-radius: 4px;
+    }
+
+    .msg-bubble.student {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-top-left-radius: 4px;
+    }
+
+    .msg-bubble.generator {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-top-left-radius: 4px;
+    }
+
+    .msg-bubble.user {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      color: #fff;
+      border-top-right-radius: 4px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Highlight inside messages */
+    .code-chip {
+      font-family: var(--font-mono);
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #38bdf8;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .active-recall-box {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border-left: 3px solid #10b981;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #d1fae5;
+    }
+
+    .artifact-notification-card {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px dashed rgba(245, 158, 11, 0.4);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .artifact-btn-preview {
+      background: #f59e0b;
+      color: #111827;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .artifact-btn-preview:hover {
+      background: #fbbf24;
+      transform: scale(1.03);
+    }
+
+    /* Typing indicator */
+    .typing-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-full);
+      width: fit-content;
+      margin-left: 46px;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .typing-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Chat Input Area */
+    .chat-bottom-dock {
+      padding: 12px 24px 18px 24px;
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quick-chips-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .quick-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+    }
+
+    .quick-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .quick-chip.teacher-chip:hover { border-color: var(--teacher-border); color: #a5b4fc; }
+    .quick-chip.student-chip:hover { border-color: var(--student-border); color: #6ee7b7; }
+    .quick-chip.gen-chip:hover { border-color: var(--generator-border); color: #fcd34d; }
+
+    .input-compose-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: var(--transition-fast);
+    }
+
+    .input-compose-box:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .target-agent-select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .target-agent-select option {
+      background: #1f2937;
+      color: #fff;
+    }
+
+    .chat-text-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-family: var(--font-main);
+      font-size: 14px;
+      outline: none;
+      padding: 4px 6px;
+    }
+
+    .chat-text-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-send-message {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .btn-send-message:hover {
+      background: #6366f1;
+      transform: scale(1.05);
+    }
+
+    /* COLUMN 3: RIGHT SIDEBAR (ARTIFACTS SHOWCASE) */
+    .col-artifacts-sidebar {
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .artifacts-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .artifacts-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .artifacts-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .artifact-count-tag {
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Artifact Tabs */
+    .artifact-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+    }
+
+    .art-tab-btn {
+      flex: 1;
+      padding: 5px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: var(--transition-fast);
+    }
+
+    .art-tab-btn.active {
+      background: var(--bg-surface-elevated);
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    .artifacts-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ARTIFACT 1: QUIZ COMPONENT */
+    .artifact-panel {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: var(--transition-normal);
+    }
+
+    .artifact-panel:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 8px;
+    }
+
+    .panel-badge {
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .quiz-badge { color: #f59e0b; }
+    .flashcard-badge { color: #10b981; }
+    .mindmap-badge { color: #6366f1; }
+
+    .quiz-score-live {
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .quiz-question-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-question-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-opt-btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      color: #d1d5db;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn:hover:not(.disabled) {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2) !important;
+      border-color: #10b981 !important;
+      color: #6ee7b7 !important;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #ef4444 !important;
+      color: #fca5a5 !important;
+    }
+
+    .quiz-opt-key {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .quiz-feedback-box {
+      display: none;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.4;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .quiz-feedback-box.correct {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #a7f3d0;
+    }
+
+    .quiz-feedback-box.wrong {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+    }
+
+    /* ARTIFACT 2: 3D FLASHCARD COMPONENT */
+    .flashcard-stage {
+      perspective: 1000px;
+      min-height: 170px;
+      cursor: pointer;
+    }
+
+    .flashcard-inner {
+      position: relative;
+      width: 100%;
+      height: 170px;
+      text-align: center;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+
+    .flashcard-inner.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .flashcard-front {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      color: #fff;
+    }
+
+    .flashcard-back {
+      background: linear-gradient(145deg, #064e3b, #022c22);
+      color: #d1fae5;
+      transform: rotateY(180deg);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .fc-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .fc-main-term {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin: auto 0;
+    }
+
+    .fc-back-definition {
+      font-size: 12px;
+      line-height: 1.5;
+      margin: auto 0;
+      text-align: left;
+    }
+
+    .fc-flip-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .flashcard-nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    .fc-counter {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .fc-btn-arrow {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .fc-btn-arrow:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* ARTIFACT 3: INTERACTIVE MINDMAP */
+    .mindmap-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .mm-node-root {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid #6366f1;
+      color: #c7d2fe;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mm-branch {
+      margin-left: 16px;
+      border-left: 2px solid rgba(255, 255, 255, 0.1);
+      padding-left: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mm-node-leaf {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      padding: 5px 8px;
+      border-radius: 6px;
+      color: #e5e7eb;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: var(--transition-fast);
+    }
+
+    .mm-node-leaf:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #fff;
+    }
+
+    .mm-leaf-tag {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Modal / Demo Toast */
+    .demo-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      border: 1px solid #6366f1;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      box-shadow: var(--glass-glow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+      transform: translateY(120px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .demo-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1100px) {
+      .classroom-grid {
+        grid-template-columns: 240px 1fr 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       TOP GLOBAL NAVIGATION
+       ======================================================================== -->
+  <header class="global-nav">
+    <div class="brand-group">
+      <div class="brand-badge">AI</div>
+      <div>
+        <span class="brand-title">Multi-Agent Classroom</span>
+        <span class="brand-sub">Prototype Mock v1.0 · Hackathon K4-3A</span>
+      </div>
+    </div>
+
+    <!-- Mode Switcher Navigation -->
+    <div class="screen-switcher">
+      <button class="switch-btn active" id="navLessonBtn" onclick="switchView('lesson')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Màn hình Bài Giảng
+      </button>
+      <button class="switch-btn" id="navClassroomBtn" onclick="switchView('classroom')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Multi-Agent Classroom
+      </button>
+    </div>
+
+    <div class="nav-actions">
+      <div class="user-pill">
+        <div class="user-avatar">HV</div>
+        <span>Học viên AI20K</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       VIEW 1: MÀN HÌNH BÀI GIẢNG (LESSON SLIDE VIEW)
+       ======================================================================== -->
+  <main id="lessonView" class="view-container lesson-view active-view">
+    
+    <!-- Left Sidebar: Course Curriculum -->
+    <aside class="lesson-sidebar">
+      <div class="course-header">
+        <div class="course-badge">Khóa học Chuyên đề</div>
+        <h2 class="course-title">AI20K · Kiến trúc LLM & Multi-Agent Systems</h2>
+        <div class="progress-bar-container">
+          <div class="progress-labels">
+            <span>Tiến độ học</span>
+            <span>45% (2/4 bài)</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lesson-list">
+        <!-- Lesson 1 (Active) -->
+        <button class="lesson-item active" onclick="loadLesson(1)">
+          <div class="lesson-number">01</div>
+          <div class="lesson-info">
+            <div class="lesson-name">Cơ chế Attention & Transformer</div>
+            <div class="lesson-meta">
+              <span>Đang học</span> • <span>4 slides</span>
+            </div>
+          </div>
+        </button>
+
+        <!-- Lesson 2 -->
+        <button class="lesson-item" onclick="loadLesson(2)">
+          <div class="lesson-number">02</div>
+          <div class="lesson-info">
+            <div class="lesson-name">Prompt Engineering Nâng Cao</div>
+            <div class="lesson-meta">
+              <span>Sắp tới</span> • <span>6 slides</span>
+            </div>
+          </div>
+        </button>
+
+        <!-- Lesson 3 -->
+        <button class="lesson-item" onclick="loadLesson(3)">
+          <div class="lesson-number">03</div>
+          <div class="lesson-info">
+            <div class="lesson-name">RAG & Vector Database Search</div>
+            <div class="lesson-meta">
+              <span>Chưa học</span> • <span>5 slides</span>
+            </div>
+          </div>
+        </button>
+
+        <!-- Lesson 4 -->
+        <button class="lesson-item" onclick="loadLesson(4)">
+          <div class="lesson-number">04</div>
+          <div class="lesson-info">
+            <div class="lesson-name">Multi-Agent Collaboration Architecture</div>
+            <div class="lesson-meta">
+              <span>Chưa học</span> • <span>8 slides</span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content: Slide Viewer -->
+    <section class="lesson-main">
+      <div class="lesson-content-header">
+        <div>
+          <div class="lesson-breadcrumb">
+            <span>Khóa học AI</span> / <span>Module 1</span> / <span>Bài 01</span>
+          </div>
+          <h1 class="lesson-main-title">Bài 1: Cơ chế Attention và Kiến trúc Transformer</h1>
+        </div>
+
+        <!-- Call To Action Button: Turn on Multi-Agent Classroom -->
+        <button class="btn-enter-classroom" onclick="switchView('classroom')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Bật Multi-Agent Classroom (3 AI Agents)
+        </button>
+      </div>
+
+      <!-- Interactive Slide Canvas -->
+      <div class="slide-stage-wrapper">
+        <div class="slide-canvas" id="slideCanvas">
+          <!-- Dynamic Content rendered by JS -->
+          <div id="slideInnerContent">
+            <!-- Initialized with Slide 1 -->
+          </div>
+        </div>
+
+        <!-- Slide Footer Navigation -->
+        <div class="slide-footer-nav">
+          <span class="slide-indicator" id="slideIndicator">Slide 1 / 4</span>
+          
+          <div class="slide-controls">
+            <button class="btn-slide-nav" id="prevSlideBtn" onclick="changeSlide(-1)">
+              ◀ Slide trước
+            </button>
+            <button class="btn-slide-nav" id="nextSlideBtn" onclick="changeSlide(1)">
+              Slide kế tiếp ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       VIEW 2: MÀN HÌNH MULTI-AGENT CLASSROOM (3 CỘT)
+       ======================================================================== -->
+  <main id="classroomView" class="view-container classroom-view" style="display: none;">
+    
+    <!-- Top Classroom Subbar -->
+    <div class="classroom-top-bar">
+      <button class="back-to-lesson-btn" onclick="switchView('lesson')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Quay lại bài giảng (Slide)
+      </button>
+
+      <div class="classroom-status-group">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          <span>3 Agents đang trực tuyến cùng bạn</span>
+        </div>
+
+        <div class="classroom-mode-select">
+          <button class="mode-tab active" id="tabModeAll" onclick="filterAgentConversation('all')">Thảo luận chung (Round-table)</button>
+          <button class="mode-tab" id="tabModeTeacher" onclick="filterAgentConversation('teacher')">👨‍🏫 Giảng viên</button>
+          <button class="mode-tab" id="tabModeStudent" onclick="filterAgentConversation('student')">🎒 Bạn học</button>
+          <button class="mode-tab" id="tabModeGen" onclick="filterAgentConversation('generator')">⚡ Material Bot</button>
+        </div>
+      </div>
+
+      <button class="back-to-lesson-btn" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);" onclick="resetDemoConversation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
+        Tải lại kịch bản mẫu
+      </button>
+    </div>
+
+    <!-- 3-Column Grid -->
+    <div class="classroom-grid">
+
+      <!-- ==========================================
+           CỘT 1: SIDEBAR TRÁI (3 AGENTS & LỊCH SỬ)
+           ========================================== -->
+      <aside class="col-agents-sidebar">
+        <div class="sidebar-section-title">Danh sách AI Agents</div>
+        
+        <div class="agent-cards-list">
+          <!-- All Agents Card -->
+          <div class="agent-card active" id="agentCardAll" onclick="filterAgentConversation('all')">
+            <div class="agent-avatar-icon avatar-roundtable">✨</div>
+            <div class="agent-meta">
+              <div class="agent-name-row">
+                <span class="agent-name">Lớp học chung</span>
+                <span class="agent-role-pill" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe;">3 Tác tử</span>
+              </div>
+              <div class="agent-status-text">Đang cùng thảo luận bài học</div>
+            </div>
+          </div>
+
+          <!-- Agent 1: Teaching Agent -->
+          <div class="agent-card teacher" id="agentCardTeacher" onclick="filterAgentConversation('teacher')">
+            <div class="agent-avatar-icon avatar-teacher">👨‍🏫</div>
+            <div class="agent-meta">
+              <div class="agent-name-row">
+                <span class="agent-name">TS. Minh</span>
+                <span class="agent-role-pill role-teacher">Giảng viên</span>
+              </div>
+              <div class="agent-status-text">Giải đáp & phân tích bản chất</div>
+            </div>
+          </div>
+
+          <!-- Agent 2: Student Agent (Active Recall) -->
+          <div class="agent-card student" id="agentCardStudent" onclick="filterAgentConversation('student')">
+            <div class="agent-avatar-icon avatar-student">🎒</div>
+            <div class="agent-meta">
+              <div class="agent-name-row">
+                <span class="agent-name">Bảo Nam</span>
+                <span class="agent-role-pill role-student">Bạn học (Active)</span>
+              </div>
+              <div class="agent-status-text">Đố phản biện & gợi ý ôn tập</div>
+            </div>
+          </div>
+
+          <!-- Agent 3: Learning Material Generator -->
+          <div class="agent-card generator" id="agentCardGenerator" onclick="filterAgentConversation('generator')">
+            <div class="agent-avatar-icon avatar-generator">⚡</div>
+            <div class="agent-meta">
+              <div class="agent-name-row">
+                <span class="agent-name">Nexus Bot</span>
+                <span class="agent-role-pill role-gen">Sinh tài liệu</span>
+              </div>
+              <div class="agent-status-text">Tạo Quiz, Flashcard & Mindmap</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Topics / History -->
+        <div class="chat-history-section">
+          <div class="sidebar-section-title">Chủ đề thảo luận gần đây</div>
+          <div class="history-list">
+            <div class="history-item active">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>Tại sao cần căn bậc 2 dk?</span>
+            </div>
+            <div class="history-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>Phân biệt Query, Key, Value</span>
+            </div>
+            <div class="history-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>Multi-head Attention lợi ích gì?</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ==========================================
+           CỘT 2: MAIN CONTENT Ở GIỮA (CUỘC TRÒ CHUYỆN)
+           ========================================== -->
+      <section class="col-chat-main">
+        <!-- Message Stream -->
+        <div class="chat-stream" id="chatStream">
+          <!-- Dynamically populated messages -->
+        </div>
+
+        <!-- Typing Animation -->
+        <div class="typing-row" id="typingIndicator">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span id="typingAgentName">AI đang trả lời...</span>
+        </div>
+
+        <!-- Bottom Chat Dock -->
+        <div class="chat-bottom-dock">
+          <!-- Quick action chips -->
+          <div class="quick-chips-row">
+            <button class="quick-chip student-chip" onclick="triggerQuickPrompt('answer_dk')">
+              🎯 Trả lời bạn học: "Vì để tránh triệt tiêu gradient khi dk lớn"
+            </button>
+            <button class="quick-chip teacher-chip" onclick="triggerQuickPrompt('ask_multihead')">
+              💡 Hỏi Giảng viên: "Tại sao cần dùng Multi-Head thay vì 1 Head?"
+            </button>
+            <button class="quick-chip gen-chip" onclick="triggerQuickPrompt('gen_quiz')">
+              📝 Yêu cầu Bot: "Tạo thêm 3 câu Quiz trắc nghiệm"
+            </button>
+            <button class="quick-chip gen-chip" onclick="triggerQuickPrompt('gen_mindmap')">
+              🧠 Yêu cầu Bot: "Mở rộng Mindmap sang Multi-Head"
+            </button>
+          </div>
+
+          <!-- Input Box -->
+          <div class="input-compose-box">
+            <select class="target-agent-select" id="targetAgentSelect">
+              <option value="all">@Tất cả Agents</option>
+              <option value="teacher">@TS. Minh (Giảng viên)</option>
+              <option value="student">@Bảo Nam (Bạn học)</option>
+              <option value="generator">@Nexus (Tạo tài liệu)</option>
+            </select>
+
+            <input 
+              type="text" 
+              class="chat-text-input" 
+              id="chatInput" 
+              placeholder="Nhập câu hỏi, câu trả lời hoặc yêu cầu tạo tài liệu ôn tập..." 
+              onkeydown="if(event.key === 'Enter') handleUserSendMessage()"
+            />
+
+            <button class="btn-send-message" onclick="handleUserSendMessage()" title="Gửi tin nhắn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           CỘT 3: SIDEBAR PHẢI (KHO ARTIFACTS ĐÃ GEN)
+           ========================================== -->
+      <aside class="col-artifacts-sidebar">
+        <div class="artifacts-header">
+          <div class="artifacts-title-row">
+            <div class="artifacts-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              <span>Kho Artifacts đã gen</span>
+            </div>
+            <span class="artifact-count-tag" id="artifactTotalBadge">3 tài liệu</span>
+          </div>
+
+          <!-- Artifact Filters -->
+          <div class="artifact-tabs">
+            <button class="art-tab-btn active" id="tabArtAll" onclick="filterArtifacts('all')">Tất cả</button>
+            <button class="art-tab-btn" id="tabArtQuiz" onclick="filterArtifacts('quiz')">Quiz</button>
+            <button class="art-tab-btn" id="tabArtCards" onclick="filterArtifacts('cards')">Flashcard</button>
+            <button class="art-tab-btn" id="tabArtMindmap" onclick="filterArtifacts('mindmap')">Mindmap</button>
+          </div>
+        </div>
+
+        <div class="artifacts-body" id="artifactsBody">
+          
+          <!-- ARTIFACT 1: INTERACTIVE QUIZ -->
+          <div class="artifact-panel" id="artPanelQuiz">
+            <div class="panel-header">
+              <span class="panel-badge quiz-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Quiz Ôn Tập Nhanh · Active Recall
+              </span>
+              <span class="quiz-score-live" id="quizScoreText">Điểm: 0/2</span>
+            </div>
+
+            <!-- Question 1 -->
+            <div class="quiz-question-box" id="quizQ1">
+              <div class="quiz-question-title">
+                <strong>Câu 1:</strong> Tại sao trong công thức Scaled Dot-Product lại chia cho <span class="code-chip">√dk</span>?
+              </div>
+              <div class="quiz-options">
+                <button class="quiz-opt-btn" onclick="answerQuiz(1, 'A', false)">
+                  <span class="quiz-opt-key">A</span> Để giảm kích thước bộ nhớ GPU
+                </button>
+                <button class="quiz-opt-btn" onclick="answerQuiz(1, 'B', true)">
+                  <span class="quiz-opt-key">B</span> Để tránh tích vô hướng quá lớn làm triệt tiêu gradient ở hàm Softmax
+                </button>
+                <button class="quiz-opt-btn" onclick="answerQuiz(1, 'C', false)">
+                  <span class="quiz-opt-key">C</span> Để biến ma trận thành ma trận đường chéo
+                </button>
+              </div>
+              <div class="quiz-feedback-box" id="quizFeed1"></div>
+            </div>
+
+            <!-- Question 2 -->
+            <div class="quiz-question-box" id="quizQ2" style="border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+              <div class="quiz-question-title">
+                <strong>Câu 2:</strong> Trong cơ chế Attention, vector nào đóng vai trò là "Truy vấn tìm kiếm"?
+              </div>
+              <div class="quiz-options">
+                <button class="quiz-opt-btn" onclick="answerQuiz(2, 'A', true)">
+                  <span class="quiz-opt-key">A</span> Query (Q)
+                </button>
+                <button class="quiz-opt-btn" onclick="answerQuiz(2, 'B', false)">
+                  <span class="quiz-opt-key">B</span> Key (K)
+                </button>
+                <button class="quiz-opt-btn" onclick="answerQuiz(2, 'C', false)">
+                  <span class="quiz-opt-key">C</span> Value (V)
+                </button>
+              </div>
+              <div class="quiz-feedback-box" id="quizFeed2"></div>
+            </div>
+          </div>
+
+          <!-- ARTIFACT 2: 3D FLASHCARD -->
+          <div class="artifact-panel" id="artPanelCards">
+            <div class="panel-header">
+              <span class="panel-badge flashcard-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                3D Flashcards · Bấm để lật thẻ
+              </span>
+              <span class="fc-counter" id="fcCounter">Thẻ 1 / 3</span>
+            </div>
+
+            <div class="flashcard-stage" onclick="flipFlashcard()">
+              <div class="flashcard-inner" id="flashcardInner">
+                <!-- Front -->
+                <div class="flashcard-face flashcard-front">
+                  <div class="fc-tag">Khái niệm cốt lõi</div>
+                  <div class="fc-main-term" id="fcFrontText">Scaled Dot-Product Attention</div>
+                  <div class="fc-flip-hint">👆 Bấm vào đây để xem định nghĩa & công thức</div>
+                </div>
+                <!-- Back -->
+                <div class="flashcard-face flashcard-back">
+                  <div class="fc-tag" style="color: #6ee7b7;">Định nghĩa & Bản chất</div>
+                  <div class="fc-back-definition" id="fcBackText">
+                    Công thức: Softmax(Q·K^T / √dk)·V.<br><br>
+                    💡 <strong>Mẹo nhớ:</strong> Query hỏi Key để lấy trọng số tin cậy, sau đó nhân với Value để tổng hợp thông tin ngữ cảnh.
+                  </div>
+                  <div class="fc-flip-hint" style="color: #a7f3d0;">👆 Bấm để lật lại mặt trước</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flashcard-nav-row">
+              <button class="fc-btn-arrow" onclick="navFlashcard(-1)">◀ Thẻ trước</button>
+              <button class="fc-btn-arrow" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981;" onclick="markLearnedCard()">✓ Đã thuộc</button>
+              <button class="fc-btn-arrow" onclick="navFlashcard(1)">Thẻ tiếp theo ▶</button>
+            </div>
+          </div>
+
+          <!-- ARTIFACT 3: INTERACTIVE MINDMAP -->
+          <div class="artifact-panel" id="artPanelMindmap">
+            <div class="panel-header">
+              <span class="panel-badge mindmap-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                Mindmap Kiến thức Tương tác
+              </span>
+            </div>
+
+            <div class="mindmap-tree" id="mindmapContent">
+              <div class="mm-node-root">
+                <span>🧠 Transformer Attention Architecture</span>
+              </div>
+              <div class="mm-branch">
+                <div class="mm-node-leaf" onclick="showToast('Nhánh Q-K-V: Bản chất của phép truy xuất thông tin ngữ cảnh')">
+                  <span>1. Vectors Q, K, V</span>
+                  <span class="mm-leaf-tag">Trọng số ngữ cảnh</span>
+                </div>
+                <div class="mm-node-leaf" onclick="showToast('Nhánh Scaling Factor: Chia cho căn bậc hai dk để bảo vệ độ dốc gradient')">
+                  <span>2. Scaling Factor (√dk)</span>
+                  <span class="mm-leaf-tag">Chống van gradient</span>
+                </div>
+                <div class="mm-node-leaf" onclick="showToast('Nhánh Softmax: Chuẩn hoá các trọng số chú ý thành xác suất tổng bằng 1')">
+                  <span>3. Softmax Distribution</span>
+                  <span class="mm-leaf-tag">Xác suất chú ý</span>
+                </div>
+                <div class="mm-node-leaf" onclick="showToast('Nhánh Multi-Head: Cho phép mô hình đồng thời chú ý tới nhiều khía cạnh ngữ pháp & ngữ nghĩa khác nhau')">
+                  <span>4. Multi-Head Attention</span>
+                  <span class="mm-leaf-tag">Song song hóa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- Notification Toast -->
+  <div class="demo-toast" id="demoToast">
+    <span id="toastMessage">Thông báo tương tác!</span>
+  </div>
+
+  <!-- ========================================================================
+       JAVASCRIPT LOGIC: MOCK DATA & INTERACTIVE WORKFLOW
+       ======================================================================== -->
+  <script>
+    /* ==========================================================================
+       1. SLIDES DATA & CONTROLLER (SCREEN 1)
+       ========================================================================== */
+    const slidesData = [
+      {
+        tag: "Khái niệm nền tảng",
+        title: "1. Tại sao Attention Mechanism ra đời?",
+        body: `
+          <p style="margin-bottom: 14px;">Trước khi có Transformer (2017), các mô hình dịch máy và xử lý ngôn ngữ chủ yếu dựa trên <strong>RNN và LSTM</strong>. Tuy nhiên, các kiến trúc này gặp hai giới hạn chí mạng:</p>
+          <ul style="padding-left: 20px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Mất mát thông tin đường dài (Long-term Dependency):</strong> Khi câu văn quá dài, các từ ở đầu câu dễ bị lãng quên ở cuối câu.</li>
+            <li><strong>Không tính toán song song được (Sequential bottleneck):</strong> Từ sau phải chờ từ trước tính xong, khiến việc huấn luyện trên dữ liệu khổng lồ tốn hàng tháng trời.</li>
+          </ul>
+          <p>Cơ chế <strong>Self-Attention</strong> ra đời với bài báo huyền thoại <em>"Attention Is All You Need"</em>, giải quyết triệt để 2 vấn đề này bằng cách cho phép mỗi từ kết nối trực tiếp với mọi từ khác trong câu cùng một lúc.</p>
+        `
+      },
+      {
+        tag: "Công thức toán học & Bản chất",
+        title: "2. Scaled Dot-Product Attention hoạt động như thế nào?",
+        body: `
+          <p>Trọng tâm của Transformer là phép tính tích vô hướng có chia tỷ lệ giữa ba ma trận <strong>Query (Q)</strong>, <strong>Key (K)</strong> và <strong>Value (V)</strong>:</p>
+          
+          <div class="attention-diagram-box">
+            <div class="vector-node q">
+              <span>Query (Q)</span>
+              <span class="vector-desc">Từ đang tìm kiếm</span>
+            </div>
+            <div class="diagram-operator">×</div>
+            <div class="vector-node k">
+              <span>Key (K)</span>
+              <span class="vector-desc">Từ được đối chiếu</span>
+            </div>
+            <div class="diagram-operator">÷ √d<sub>k</sub> ➔ Softmax ➔ ×</div>
+            <div class="vector-node v">
+              <span>Value (V)</span>
+              <span class="vector-desc">Thông tin truyền đi</span>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 14px;">
+            <div class="formula-badge">Attention(Q, K, V) = softmax( (Q · K<sup>T</sup>) / √d<sub>k</sub> ) · V</div>
+          </div>
+          <p style="margin-top: 14px; font-size: 13px; color: #9ca3af;">
+            * Lưu ý: Chia cho <strong>√d<sub>k</sub></strong> để giữ phương sai ổn định, không làm softmax bị bão hòa. Hãy mở <strong>Multi-Agent Classroom</strong> để cùng thảo luận chi tiết điều này với Bạn học và Giảng viên AI!
+          </p>
+        `
+      },
+      {
+        tag: "Kiến trúc mở rộng",
+        title: "3. Multi-Head Attention: Đa góc nhìn ngữ nghĩa",
+        body: `
+          <p style="margin-bottom: 14px;">Thay vì chỉ tính một hàm attention duy nhất, kiến trúc Transformer chia các vector thành <strong>h heads (thường là 8 hoặc 16 heads)</strong> chạy song song.</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+            <div style="background: rgba(255, 255, 255, 0.03); padding: 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+              <strong style="color: #6366f1;">Head 1 · Quan hệ ngữ pháp:</strong>
+              <p style="font-size: 13px; color: #d1d5db; margin-top: 6px;">Tập trung liên kết Chủ ngữ với Động từ chính ("The dog ... barked").</p>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.03); padding: 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+              <strong style="color: #10b981;">Head 2 · Đại từ thay thế:</strong>
+              <p style="font-size: 13px; color: #d1d5db; margin-top: 6px;">Tập trung giải nghĩa đại từ ("it" chỉ đồ vật hay con vật xuất hiện trước đó).</p>
+            </div>
+          </div>
+          <p style="margin-top: 14px;">Nhờ vậy, mô hình thu được hiểu biết toàn diện về ngữ nghĩa văn bản ở nhiều tầng trừu tượng khác nhau.</p>
+        `
+      },
+      {
+        tag: "Ứng dụng thực tế",
+        title: "4. Tác động tới ChatGPT, Gemini & Kỷ nguyên LLMs",
+        body: `
+          <p style="margin-bottom: 14px;">Mọi mô hình ngôn ngữ lớn (LLMs) đột phá hiện nay như <strong>GPT-4, Claude 3.5, Gemini 1.5 Pro, Llama 3</strong> đều kế thừa trực tiếp từ khối Transformer Decoder.</p>
+          <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Khả năng In-Context Learning:</strong> LLM hiểu ngữ cảnh lập tức chỉ qua vài dòng prompt mà không cần fine-tune lại trọng số.</li>
+            <li><strong>Multi-Agent Systems:</strong> Cơ sở để triển khai nhiều Agent giao tiếp tự động, phản biện và hợp tác giải quyết bài toán phức tạp.</li>
+          </ul>
+          <div style="margin-top: 20px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 12px 16px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 13px; color: #e0e7ff;">💡 Bạn đã sẵn sàng thảo luận và ôn tập với 3 AI Agents chưa?</span>
+            <button class="btn-enter-classroom" style="padding: 6px 14px; font-size: 12px;" onclick="switchView('classroom')">
+              Vào phòng học ngay →
+            </button>
+          </div>
+        `
+      }
+    ];
+
+    let currentSlideIndex = 0;
+
+    function renderSlide(index) {
+      const slide = slidesData[index];
+      const container = document.getElementById('slideInnerContent');
+      container.innerHTML = `
+        <div>
+          <span class="slide-header-tag">📖 ${slide.tag}</span>
+          <h2 class="slide-title">${slide.title}</h2>
+          <div class="slide-body">${slide.body}</div>
+        </div>
+      `;
+
+      document.getElementById('slideIndicator').innerText = `Slide ${index + 1} / ${slidesData.length}`;
+      document.getElementById('prevSlideBtn').disabled = (index === 0);
+      document.getElementById('nextSlideBtn').disabled = (index === slidesData.length - 1);
+    }
+
+    function changeSlide(delta) {
+      const newIndex = currentSlideIndex + delta;
+      if (newIndex >= 0 && newIndex < slidesData.length) {
+        currentSlideIndex = newIndex;
+        renderSlide(currentSlideIndex);
+      }
+    }
+
+    function loadLesson(num) {
+      if (num === 1) {
+        showToast("Đang mở Bài 1: Cơ chế Attention & Transformer");
+      } else {
+        showToast(`Bài ${num} đang được khóa hoặc là bài tiếp theo trong lộ trình.`);
+      }
+    }
+
+    /* ==========================================================================
+       2. VIEW SWITCHER (SCREEN 1 <-> SCREEN 2)
+       ========================================================================== */
+    function switchView(viewName) {
+      const lessonView = document.getElementById('lessonView');
+      const classroomView = document.getElementById('classroomView');
+      const navLessonBtn = document.getElementById('navLessonBtn');
+      const navClassroomBtn = document.getElementById('navClassroomBtn');
+
+      if (viewName === 'classroom') {
+        lessonView.classList.remove('active-view');
+        classroomView.classList.add('active-view');
+        lessonView.style.display = 'none';
+        classroomView.style.display = 'flex';
+        navLessonBtn.classList.remove('active');
+        navClassroomBtn.classList.add('active');
+        window.scrollTo(0, 0);
+        showToast("✨ Đã vào chế độ Multi-Agent Classroom!");
+      } else {
+        classroomView.classList.remove('active-view');
+        lessonView.classList.add('active-view');
+        classroomView.style.display = 'none';
+        lessonView.style.display = 'flex';
+        navClassroomBtn.classList.remove('active');
+        navLessonBtn.classList.add('active');
+        window.scrollTo(0, 0);
+      }
+    }
+
+    /* ==========================================================================
+       3. MULTI-AGENT CLASSROOM CHAT LOGIC (SCREEN 2)
+       ========================================================================== */
+    // Initial Conversation Seed Data
+    const initialConversation = [
+      {
+        id: 1,
+        senderType: "teacher",
+        senderName: "TS. Minh",
+        role: "Giảng viên",
+        avatar: "👨‍🏫",
+        time: "10:15",
+        text: `Chào bạn! Chúng ta vừa đi qua slide về cơ chế <strong>Scaled Dot-Product Attention</strong>. Trọng tâm của bài này là hiểu rõ cách mà ma trận <span class="code-chip">Query</span> tìm kiếm thông tin phù hợp trong <span class="code-chip">Key</span> để trích xuất <span class="code-chip">Value</span>. Bạn thấy phần nào còn cần giải thích sâu hơn không?`
+      },
+      {
+        id: 2,
+        senderType: "student",
+        senderName: "Bảo Nam",
+        role: "Bạn học (Active Recall)",
+        avatar: "🎒",
+        time: "10:16",
+        text: `Ủa cậu ơi! Chỗ công thức <span class="code-chip">Softmax((Q · K^T) / √dk) · V</span>, tớ vẫn chưa thông suốt lắm: <strong>Tại sao lại cần chia cho căn bậc hai của dk (√dk)</strong> vậy cậu? Nếu bỏ √dk đi thì thuật toán có chạy được không? Cậu thử giải thích ngắn gọn bằng lời của cậu cho tớ nghe với!`,
+        activeRecallPrompt: true
+      },
+      {
+        id: 3,
+        senderType: "generator",
+        senderName: "Nexus Bot",
+        role: "Sinh tài liệu",
+        avatar: "⚡",
+        time: "10:16",
+        text: `Mình đã tạo sẵn <strong>1 bộ Quiz 2 câu</strong> và <strong>3 thẻ Flashcards 3D</strong> ở cột <em>Kho Artifacts bên phải</em> để cả lớp cùng củng cố kiến thức nhé!`,
+        hasArtifactNotice: true
+      }
+    ];
+
+    let messagesList = [...initialConversation];
+    let currentAgentFilter = 'all';
+
+    function renderMessages() {
+      const container = document.getElementById('chatStream');
+      container.innerHTML = '';
+
+      const filtered = messagesList.filter(msg => {
+        if (currentAgentFilter === 'all') return true;
+        if (msg.senderType === 'user') return true;
+        return msg.senderType === currentAgentFilter;
+      });
+
+      filtered.forEach(msg => {
+        const isUser = (msg.senderType === 'user');
+        const row = document.createElement('div');
+        row.className = `msg-row ${isUser ? 'user' : ''}`;
+
+        let roleBadgeClass = 'role-teacher';
+        if (msg.senderType === 'student') roleBadgeClass = 'role-student';
+        if (msg.senderType === 'generator') roleBadgeClass = 'role-gen';
+
+        let extraContent = '';
+        if (msg.activeRecallPrompt) {
+          extraContent = `
+            <div class="active-recall-box">
+              🎯 <strong>Thử thách Active Recall:</strong> Bạn hãy thử tự trả lời câu hỏi của bạn Nam xem sao! Nhớ lại kiến thức mà không nhìn sách là cách ghi nhớ tốt nhất.
+            </div>
+          `;
+        }
+        if (msg.hasArtifactNotice) {
+          extraContent = `
+            <div class="artifact-notification-card">
+              <span style="font-size: 12px; color: #f59e0b;">✨ Đã tự động tạo: Quiz & Flashcard về Attention</span>
+              <button class="artifact-btn-preview" onclick="filterArtifacts('all')">Xem ngay ➔</button>
+            </div>
+          `;
+        }
+
+        row.innerHTML = `
+          <div class="msg-avatar ${isUser ? 'user-av' : ''} ${!isUser ? 'avatar-' + msg.senderType : ''}">
+            ${isUser ? 'HV' : msg.avatar}
+          </div>
+          <div class="msg-content-block">
+            <div class="msg-author-tag">
+              <span class="msg-author-name">${msg.senderName}</span>
+              ${!isUser ? `<span class="msg-role-badge ${roleBadgeClass}">${msg.role}</span>` : ''}
+              <span class="msg-time">${msg.time}</span>
+            </div>
+            <div class="msg-bubble ${msg.senderType}">
+              ${msg.text}
+              ${extraContent}
+            </div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      // Auto scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function filterAgentConversation(agentKey) {
+      currentAgentFilter = agentKey;
+
+      // Update active state in sub-bar
+      document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+      if (agentKey === 'all') document.getElementById('tabModeAll')?.classList.add('active');
+      if (agentKey === 'teacher') document.getElementById('tabModeTeacher')?.classList.add('active');
+      if (agentKey === 'student') document.getElementById('tabModeStudent')?.classList.add('active');
+      if (agentKey === 'generator') document.getElementById('tabModeGen')?.classList.add('active');
+
+      // Update sidebar cards
+      document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+      if (agentKey === 'all') document.getElementById('agentCardAll')?.classList.add('active');
+      if (agentKey === 'teacher') document.getElementById('agentCardTeacher')?.classList.add('active');
+      if (agentKey === 'student') document.getElementById('agentCardStudent')?.classList.add('active');
+      if (agentKey === 'generator') document.getElementById('agentCardGenerator')?.classList.add('active');
+
+      renderMessages();
+    }
+
+    // User sends message
+    function handleUserSendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const targetAgent = document.getElementById('targetAgentSelect').value;
+
+      // Append user message
+      const newMsg = {
+        id: Date.now(),
+        senderType: "user",
+        senderName: "Bạn (Học viên)",
+        role: "Học viên",
+        avatar: "HV",
+        time: getCurrentTimeString(),
+        text: text
+      };
+      messagesList.push(newMsg);
+      input.value = '';
+      renderMessages();
+
+      // Trigger AI Agent reaction based on context
+      simulateAgentResponse(text, targetAgent);
+    }
+
+    function triggerQuickPrompt(type) {
+      if (type === 'answer_dk') {
+        document.getElementById('chatInput').value = "Bởi vì khi chiều dài dk lớn, tích vô hướng Q·K^T sẽ có độ biến thiên rất lớn, đẩy hàm Softmax vào vùng cực dốc khiến gradient bị triệt tiêu (bão hòa), làm việc học bị đình trệ!";
+        document.getElementById('targetAgentSelect').value = "student";
+        handleUserSendMessage();
+      } else if (type === 'ask_multihead') {
+        document.getElementById('chatInput').value = "Thầy Minh ơi, tại sao người ta lại chia thành nhiều Head (Multi-Head) thay vì chỉ dùng 1 Head có kích thước lớn?";
+        document.getElementById('targetAgentSelect').value = "teacher";
+        handleUserSendMessage();
+      } else if (type === 'gen_quiz') {
+        document.getElementById('chatInput').value = "Nexus ơi, nhờ bạn sinh thêm cho mình 2 câu Quiz nâng cao về Multi-Head Attention nhé!";
+        document.getElementById('targetAgentSelect').value = "generator";
+        handleUserSendMessage();
+      } else if (type === 'gen_mindmap') {
+        document.getElementById('chatInput').value = "Nexus ơi, cập nhật Mindmap mở rộng thêm nhánh Multi-Head Attention giúp mình!";
+        document.getElementById('targetAgentSelect').value = "generator";
+        handleUserSendMessage();
+      }
+    }
+
+    function simulateAgentResponse(userText, target) {
+      const typing = document.getElementById('typingIndicator');
+      const typingName = document.getElementById('typingAgentName');
+      typing.style.display = 'flex';
+
+      let responder = 'student';
+      if (target === 'teacher') responder = 'teacher';
+      else if (target === 'generator') responder = 'generator';
+      else {
+        // Auto pick based on text
+        if (userText.includes('Quiz') || userText.includes('Mindmap') || userText.includes('tài liệu')) responder = 'generator';
+        else if (userText.includes('Thầy') || userText.includes('giải thích')) responder = 'teacher';
+        else responder = 'student';
+      }
+
+      if (responder === 'teacher') typingName.innerText = 'TS. Minh (Giảng viên) đang soạn câu trả lời...';
+      else if (responder === 'student') typingName.innerText = 'Bảo Nam (Bạn học) đang suy nghĩ phản hồi...';
+      else typingName.innerText = 'Nexus Bot đang sinh tài liệu mới...';
+
+      setTimeout(() => {
+        typing.style.display = 'none';
+
+        if (responder === 'student') {
+          messagesList.push({
+            id: Date.now() + 1,
+            senderType: "student",
+            senderName: "Bảo Nam",
+            role: "Bạn học (Active Recall)",
+            avatar: "🎒",
+            time: getCurrentTimeString(),
+            text: `Ồ, đỉnh thật sự! Cậu giải thích cực kỳ chuẩn và dễ hiểu luôn! Đúng là nếu không chia cho <span class="code-chip">√dk</span> thì giá trị dot-product sẽ rất lớn, làm <span class="code-chip">softmax</span> bị bão hòa và gradient = 0. Học cùng cậu tiến bộ hẳn luôn!`
+          });
+
+          // Teacher chimes in to validate
+          setTimeout(() => {
+            messagesList.push({
+              id: Date.now() + 2,
+              senderType: "teacher",
+              senderName: "TS. Minh",
+              role: "Giảng viên",
+              avatar: "👨‍🏫",
+              time: getCurrentTimeString(),
+              text: `Rất khen ngợi câu trả lời của bạn! Bạn đã nắm vững bản chất toán học của phép chuẩn hóa. Việc tự diễn giải lại (Feynman technique) thế này giúp bạn nhớ kiến thức này ít nhất 6 tháng nữa!`
+            });
+            renderMessages();
+          }, 1200);
+
+        } else if (responder === 'teacher') {
+          messagesList.push({
+            id: Date.now() + 1,
+            senderType: "teacher",
+            senderName: "TS. Minh",
+            role: "Giảng viên",
+            avatar: "👨‍🏫",
+            time: getCurrentTimeString(),
+            text: `Câu hỏi rất hay! Hãy tưởng tượng 1 Head giống như bạn đọc sách với 1 lăng kính duy nhất. Còn <strong>Multi-Head</strong> cho phép mô hình nhìn đồng thời dưới <em>nhiều lăng kính</em>: một Head bắt mối quan hệ ngữ pháp (chủ - vị), một Head bắt liên kết đại từ, một Head bắt từ trái nghĩa. Tổng hợp lại cho ngữ cảnh đa chiều và sâu sắc hơn rất nhiều.`
+          });
+        } else if (responder === 'generator') {
+          messagesList.push({
+            id: Date.now() + 1,
+            senderType: "generator",
+            senderName: "Nexus Bot",
+            role: "Sinh tài liệu",
+            avatar: "⚡",
+            time: getCurrentTimeString(),
+            text: `Đã nhận yêu cầu! Mình vừa cập nhật thêm 1 nhánh mới vào <strong>Mindmap</strong> và bổ sung câu hỏi ôn tập vào <strong>Kho Artifacts</strong> bên phải rồi nhé! Mời bạn click tab bên phải để khám phá ngay.`,
+            hasArtifactNotice: true
+          });
+          highlightNewArtifact();
+        }
+
+        renderMessages();
+      }, 1400);
+    }
+
+    function resetDemoConversation() {
+      messagesList = [...initialConversation];
+      currentAgentFilter = 'all';
+      filterAgentConversation('all');
+      showToast("Đã nạp lại kịch bản mẫu ban đầu!");
+    }
+
+    function getCurrentTimeString() {
+      const now = new Date();
+      return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    /* ==========================================================================
+       4. ARTIFACTS PANEL LOGIC (SCREEN 2 - RIGHT SIDEBAR)
+       ========================================================================== */
+    function filterArtifacts(type) {
+      const quizPanel = document.getElementById('artPanelQuiz');
+      const cardsPanel = document.getElementById('artPanelCards');
+      const mindmapPanel = document.getElementById('artPanelMindmap');
+
+      document.querySelectorAll('.art-tab-btn').forEach(b => b.classList.remove('active'));
+
+      if (type === 'all') {
+        document.getElementById('tabArtAll').classList.add('active');
+        quizPanel.style.display = 'flex';
+        cardsPanel.style.display = 'flex';
+        mindmapPanel.style.display = 'flex';
+      } else if (type === 'quiz') {
+        document.getElementById('tabArtQuiz').classList.add('active');
+        quizPanel.style.display = 'flex';
+        cardsPanel.style.display = 'none';
+        mindmapPanel.style.display = 'none';
+      } else if (type === 'cards') {
+        document.getElementById('tabArtCards').classList.add('active');
+        quizPanel.style.display = 'none';
+        cardsPanel.style.display = 'flex';
+        mindmapPanel.style.display = 'none';
+      } else if (type === 'mindmap') {
+        document.getElementById('tabArtMindmap').classList.add('active');
+        quizPanel.style.display = 'none';
+        cardsPanel.style.display = 'none';
+        mindmapPanel.style.display = 'flex';
+      }
+    }
+
+    // Interactive Quiz Score tracking
+    let quizScore = 0;
+    const answered = { 1: false, 2: false };
+
+    function answerQuiz(qNum, choice, isCorrect) {
+      if (answered[qNum]) return;
+      answered[qNum] = true;
+
+      const qBox = document.getElementById(`quizQ${qNum}`);
+      const buttons = qBox.querySelectorAll('.quiz-opt-btn');
+      const feed = document.getElementById(`quizFeed${qNum}`);
+
+      buttons.forEach(btn => {
+        btn.classList.add('disabled');
+      });
+
+      if (isCorrect) {
+        event.currentTarget.classList.add('correct');
+        feed.className = 'quiz-feedback-box correct';
+        feed.innerHTML = `🎉 <strong>Chính xác!</strong> ${qNum === 1 ? 'Chia cho √dk giúp giá trị đầu vào của Softmax không quá lớn, chống triệt tiêu gradient.' : 'Vector Query (Q) đại diện cho câu hỏi hoặc từ đang cần tra cứu mối liên hệ.'}`;
+        quizScore++;
+      } else {
+        event.currentTarget.classList.add('wrong');
+        feed.className = 'quiz-feedback-box wrong';
+        feed.innerHTML = `❌ <strong>Chưa đúng rồi!</strong> Đáp án đúng là <strong>${qNum === 1 ? 'B' : 'A'}</strong>. ${qNum === 1 ? 'Lý do chính là để ngăn chặn hiện tượng bão hòa gradient trong Softmax.' : 'Query là vector truy vấn, Key là từ được so sánh, Value là thông tin được lấy.'}`;
+      }
+
+      document.getElementById('quizScoreText').innerText = `Điểm: ${quizScore}/2`;
+      showToast(`Bạn đã hoàn thành câu hỏi ${qNum}!`);
+    }
+
+    // Flashcard Flip & Switcher
+    const flashcardsData = [
+      {
+        term: "Scaled Dot-Product Attention",
+        def: "Công thức: Softmax((Q · K^T) / √dk) · V.<br><br>💡 <strong>Mẹo nhớ:</strong> Query hỏi Key để tìm độ tương quan, sau đó nhân với Value để gom thông tin."
+      },
+      {
+        term: "Multi-Head Attention",
+        def: "Chia vector Q, K, V thành nhiều tập con (heads) tính song song.<br><br>💡 <strong>Lợi ích:</strong> Cho phép chú ý đồng thời nhiều khía cạnh cú pháp & ngữ nghĩa khác nhau."
+      },
+      {
+        term: "Vanishing Gradient in Softmax",
+        def: "Khi giá trị đầu vào quá lớn, đạo hàm của hàm Softmax tiệm cận về 0.<br><br>💡 <strong>Khắc phục:</strong> Chia cho √dk để chuẩn hóa phương sai về xấp xỉ 1."
+      }
+    ];
+
+    let currentCardIndex = 0;
+
+    function flipFlashcard() {
+      const card = document.getElementById('flashcardInner');
+      card.classList.toggle('flipped');
+    }
+
+    function navFlashcard(delta) {
+      const card = document.getElementById('flashcardInner');
+      card.classList.remove('flipped');
+
+      setTimeout(() => {
+        currentCardIndex = (currentCardIndex + delta + flashcardsData.length) % flashcardsData.length;
+        document.getElementById('fcFrontText').innerText = flashcardsData[currentCardIndex].term;
+        document.getElementById('fcBackText').innerHTML = flashcardsData[currentCardIndex].def;
+        document.getElementById('fcCounter').innerText = `Thẻ ${currentCardIndex + 1} / ${flashcardsData.length}`;
+      }, 150);
+    }
+
+    function markLearnedCard() {
+      showToast(`✓ Đã đánh dấu nhớ thẻ "${flashcardsData[currentCardIndex].term}"!`);
+      navFlashcard(1);
+    }
+
+    function highlightNewArtifact() {
+      const totalBadge = document.getElementById('artifactTotalBadge');
+      totalBadge.innerText = '4 tài liệu';
+      totalBadge.style.background = '#10b981';
+      totalBadge.style.color = '#fff';
+      showToast('⚡ Artifacts mới đã được tạo vào Sidebar phải!');
+    }
+
+    // Toast Utility
+    function showToast(text) {
+      const toast = document.getElementById('demoToast');
+      document.getElementById('toastMessage').innerText = text;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2600);
+    }
+
+    /* ==========================================================================
+       5. INITIALIZATION
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSlide(0);
+      renderMessages();
+    });
+  </script>
+</body>
+</html>

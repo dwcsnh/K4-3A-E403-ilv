@@ -1,0 +1,246 @@
+# starter_v1 — Improved tool declarations with explicit routing guidance,
+# argument constraints, confirmation boundaries, and parameter semantics.
+tools:
+  # ---------------- Core tools ----------------
+  - name: clarify
+    description: >-
+      Dùng khi cần hỏi người dùng bổ sung thông tin còn thiếu, làm rõ lựa chọn mơ hồ,
+      hoặc XIN XÁC NHẬN trước khi thực hiện hành động tạo ticket.
+      BẮT BUỘC gọi tool này khi:
+      1) Thiếu mã thiết bị (asset_id) hoặc mã nhân viên (employee_id).
+      2) Cần xin xác nhận tạo ticket: dùng response_type='yes_no'.
+      3) Yêu cầu có môi trường hoặc lựa chọn mơ hồ: dùng response_type='choice' kèm danh sách options.
+    parameters:
+      type: object
+      properties:
+        question:
+          type: string
+          description: "Nội dung câu hỏi hoặc lời đề nghị xác nhận gửi đến người dùng."
+        response_type:
+          type: string
+          enum: [text, yes_no, choice]
+          default: "text"
+          description: "text: hỏi thông tin tự do; yes_no: xin xác nhận tạo ticket; choice: yêu cầu chọn trong options."
+        options:
+          type: array
+          default: []
+          items:
+            type: string
+          description: "Danh sách các lựa chọn cụ thể khi response_type là 'choice' (ví dụ: ['production', 'staging'])."
+      required: [question, response_type]
+
+  - name: search_kb
+    description: >-
+      Tìm kiếm các bài viết hướng dẫn khắc phục sự cố kỹ thuật trong Knowledge Base nội bộ.
+      Dùng khi người dùng hỏi cách làm, hướng dẫn xử lý lỗi (troubleshooting guide, how-to).
+      Không dùng tool này để kiểm tra trạng thái dịch vụ thời gian thực hoặc kiểm tra thiết bị cụ thể.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: "Từ khóa tìm kiếm hướng dẫn sự cố."
+        category:
+          type: string
+          enum:
+            [
+              all,
+              vpn,
+              email,
+              wifi,
+              printing,
+              account,
+              security,
+              hardware,
+              software,
+              meeting_room,
+            ]
+          default: "all"
+          description: "Nhóm chuyên mục bài viết cần tìm."
+        top_k:
+          type: integer
+          default: 3
+          description: "Số lượng bài viết tối đa cần lấy (1-5)."
+      required: [query]
+
+  - name: check_service_status
+    description: >-
+      Kiểm tra trạng thái hoạt động của DỊCH VỤ DÙNG CHUNG toàn công ty (shared company services).
+      Chỉ hỗ trợ 5 dịch vụ: vpn, email, sso, wifi, printing trên 2 môi trường: production hoặc staging.
+      Không dùng tool này để kiểm tra máy tính cá nhân.
+      Nếu môi trường người dùng nêu bị mơ hồ (ví dụ: demo, test QA) không thuộc production/staging,
+      KHÔNG ĐƯỢC TỰ ĐOÁN mà phải dùng clarify với response_type='choice' để hỏi lại.
+    parameters:
+      type: object
+      properties:
+        service:
+          type: string
+          enum: [vpn, email, sso, wifi, printing]
+          description: "Tên dịch vụ dùng chung cần kiểm tra trạng thái."
+        environment:
+          type: string
+          enum: [production, staging]
+          default: "production"
+          description: "Môi trường triển khai dịch vụ (chỉ nhận 'production' hoặc 'staging')."
+      required: [service]
+
+  - name: inspect_device
+    description: >-
+      Tra cứu thông tin phần cứng và bản chụp chẩn đoán (diagnostics snapshot) của MỘT THIẾT BỊ CỤ THỂ.
+      Bắt buộc phải có mã tài sản hợp lệ (ví dụ: LT-204, DT-031, PR-404, MB-101, RM-101).
+      Nếu người dùng nêu rõ khía cạnh sự cố (vpn, mạng, phần cứng, bảo mật...), BẮT BUỘC phải chọn đúng
+      giá trị enum tương ứng cho tham số 'check', KHÔNG ĐƯỢC dùng mặc định 'all'.
+      Nếu người dùng chưa cung cấp mã máy, KHÔNG ĐƯỢC tự đoán mà phải dùng clarify để hỏi.
+    parameters:
+      type: object
+      properties:
+        asset_id:
+          type: string
+          description: "Mã định danh thiết bị (ví dụ: LT-204, DT-031, PR-404)."
+        check:
+          type: string
+          enum: [all, network, vpn, security, hardware, software]
+          default: "all"
+          description: "Phạm vi chẩn đoán. Bắt buộc chọn đúng phạm vi cụ thể nếu người dùng đề cập đến sự cố riêng biệt."
+      required: [asset_id, check]
+
+  - name: lookup_user
+    description: >-
+      Tra cứu thông tin nhân viên trong danh bạ nội bộ theo mã nhân viên định dạng EMP-xxxx (ví dụ: EMP-1001 đến EMP-1010).
+      Trả về phòng ban, trạng thái tài khoản, MFA, và danh sách thiết bị được cấp phát.
+      Nếu người dùng chưa cung cấp mã EMP-xxxx, BẮT BUỘC dùng clarify để hỏi lại.
+    parameters:
+      type: object
+      properties:
+        employee_id:
+          type: string
+          description: "Mã nhân viên nội bộ cần tra cứu (ví dụ: EMP-1003)."
+      required: [employee_id]
+
+  - name: format_incident_report
+    description: >-
+      Định dạng các kết quả chẩn đoán và thông tin sự cố ĐÃ THU THẬP ĐƯỢC thành báo cáo Markdown hoàn chỉnh.
+      Chỉ dùng khi người dùng yêu cầu lập báo cáo/report và các findings đã sẵn sàng.
+      Không tự ý kiểm tra lại các thiết bị nếu người dùng chỉ yêu cầu định dạng báo cáo.
+    parameters:
+      type: object
+      properties:
+        findings:
+          type: array
+          default: []
+          description: "Danh sách các phát hiện đã thu thập được từ các bước chẩn đoán trước."
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              detail: { type: string }
+              source: { type: string }
+              status: { type: string }
+        template:
+          type: string
+          enum: [brief, technical, handoff]
+          default: "brief"
+          description: "Mẫu báo cáo: brief (ngắn gọn), technical (chi tiết kỹ thuật), handoff (bàn giao ca trực)."
+        incident_title:
+          type: string
+          default: "IT incident"
+          description: "Tiêu đề của sự cố."
+      required: [findings, template]
+
+  # ---------------- Optional/advanced tools ----------------
+  - name: search_device_info
+    description: >-
+      Tìm kiếm thông tin công khai về một model thiết bị trên web qua Tavily Search API.
+      CHỈ ĐƯỢC TRUYỀN: hãng sản xuất (manufacturer), tên model công khai (model), loại thông tin (query_type).
+      TUYỆT ĐỐI KHÔNG truyền mã tài sản (LT-xxx), mã nhân viên (EMP-xxx), serial, IP, hostname hoặc log nội bộ.
+    parameters:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+          description: "Tên hãng sản xuất công khai (ví dụ: Lenovo, Dell, HP)."
+        model:
+          type: string
+          description: "Tên model sản phẩm công khai (ví dụ: ThinkPad T14 Gen 4)."
+        query_type:
+          type: string
+          enum: [specs, drivers, support, compatibility]
+          default: "support"
+          description: "Loại thông tin công khai cần tìm kiếm."
+        max_results:
+          type: integer
+          default: 3
+          description: "Số lượng kết quả tìm kiếm tối đa (1 đến 5)."
+      required: [manufacturer, model, query_type]
+
+  - name: policy
+    description: >-
+      Tra cứu các quy định, chính sách bảo mật và vận hành IT trong sổ tay nội bộ Northstar Labs.
+      Chỉ dùng khi người dùng hỏi về chính sách, quy định sử dụng công cụ bên ngoài, quyền hạn, hoặc quy trình xử lý.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: "Từ khóa chính sách cần tra cứu."
+        policy_area:
+          type: string
+          enum:
+            [
+              all,
+              access_control,
+              data_privacy,
+              external_tools,
+              incident_response,
+              service_operations,
+              ticketing,
+            ]
+          default: "all"
+          description: "Chủ đề chính sách cần tra cứu."
+        top_k:
+          type: integer
+          default: 3
+          description: "Số mục chính sách liên quan cần trích xuất."
+      required: [query]
+
+  - name: create_ticket
+    description: >-
+      Tạo một ticket sự cố mới trong hệ thống Helpdesk local.
+      RANH GIỚI BẢO MẬT & XÁC NHẬN QUAN TRỌNG:
+      1) CHỈ ĐƯỢC PHÉP GỌI TOOL NÀY KHI VÀ CHỈ KHI NGƯỜI DÙNG ĐÃ XÁC NHẬN RÕ RÀNG (confirmed=true).
+      2) Nếu người dùng mới chỉ yêu cầu tạo ticket mà CHƯA XÁC NHẬN, TUYỆT ĐỐI KHÔNG GỌI TOOL NÀY,
+         mà BẮT BUỘC phải gọi 'clarify' với response_type='yes_no' để tóm tắt và xin xác nhận trước!
+      3) Nếu người dùng thay đổi bất kỳ thông tin nào (mức ưu tiên, nội dung), xác nhận cũ sẽ mất hiệu lực,
+         bắt buộc phải dùng 'clarify' để xác nhận lại payload mới.
+      4) Tuyệt đối không đưa mật khẩu, token, mã MFA, hoặc OTP vào nội dung summary.
+    parameters:
+      type: object
+      properties:
+        summary:
+          type: string
+          description: "Tóm tắt ngắn gọn mô tả sự cố kỹ thuật (không chứa credential/mật khẩu/token)."
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          default: "medium"
+          description: "Mức độ ưu tiên của sự cố."
+        asset_id:
+          type: string
+          default: ""
+          description: "Mã tài sản liên quan nếu có (ví dụ: LT-204)."
+        confirmed:
+          type: boolean
+          default: true
+          description: "BẮT BUỘC là true khi người dùng đã xác nhận rõ ràng."
+      required: [summary, confirmed]
+
+  - name: approved_software_catalog
+    description: Look up if a software is approved for use within the company and get installation notes or restrictions. Do not use for troubleshooting.
+    parameters:
+      type: object
+      properties:
+        software_name:
+          type: string
+          description: "The name of the software to look up (e.g., 'Visual Studio Code', 'Docker', 'BitTorrent')."
+      required:
+        - software_name

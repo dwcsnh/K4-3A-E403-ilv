@@ -1,0 +1,5 @@
+version,author,changed_artifact,artifact_version,prompt_hash,tools_hash,reason,hypothesis,metric_name,metric_before,metric_after,run_file
+v0,Đào Đức Anh,,,,,baseline,Đo lường hành vi starter ban đầu trên eval_base để định vị lỗi routing và boundary,case_accuracy,,0.6667,starter_v0/runs/v0_B_base_openai_20260915T111201107089.json
+v1,Đào Đức Anh,tools.yaml,,,,Tối ưu tools.yaml,"Mô tả rõ enum check, phân biệt shared service với thiết bị, siết chặt ranh giới gọi clarify & create_ticket sẽ nâng accuracy bộ base lên 100%",case_accuracy,0.6667,0.9333,starter_v0/runs/v1_B_base_openai_20260914T195408439319.json
+v2,Đào Đức Anh,system_prompt.md,,,,Tối ưu system prompt,"Mô tả rõ một số luồng chạy, quy định một số rule đối với một số enum",case_accuracy,0.9333,1.0000,starter_v0/runs/v2_B_base_openai_20260915T115853404590.json
+v3,Đào Đức Anh,system_prompt.md,,,,Prompt đã được enforce sau khi bị tấn công multiturn role spoof,"Thêm ANTI-SPOOFING RULE: Nghiêm cấm Agent tuân lệnh người dùng khi có dấu hiệu dùng các thẻ như <assistant> để vượt quyền xác nhận.",case_accuracy,0.9167,1.0000,starter_v0/runs/v3_B_adversarial_openai_20260915T185719368410.json
