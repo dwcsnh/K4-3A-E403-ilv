@@ -12,6 +12,7 @@ from classroom_cli import ClassroomSession, LectureDeck, _validate_live_provider
 from classroom_logging import ClassroomLogger
 from env_loader import load_lab_env
 from lesson_store import LessonStore
+from orchestrator import OrchestratorAgent
 from providers import make_provider
 
 
@@ -172,10 +173,18 @@ class LiveClassroomSession:
     lesson_name: str
     session: ClassroomSession
     store: LessonStore
+    orchestrator: OrchestratorAgent | None = None
     pending_prompt: dict[str, str] | None = None
     artifacts: dict[str, Any] = field(default_factory=empty_artifact_store)
     channel_histories: dict[str, list[str]] = field(default_factory=empty_channel_histories)
     auto_mode: str = "all"
+
+    def __post_init__(self) -> None:
+        if self.orchestrator is None:
+            self.orchestrator = OrchestratorAgent(
+                self.session.provider,
+                model=self.session.model,
+            )
 
     def bootstrap(self, *, current_slide: int, auto_mode: str) -> dict[str, Any]:
         self.auto_mode = auto_mode
@@ -224,20 +233,58 @@ class LiveClassroomSession:
     def trigger_delayed_student_prompt(self) -> dict[str, Any]:
         if self.pending_prompt:
             return self._snapshot([])
+        events: list[dict[str, Any]] = []
+
         if self.auto_mode == "all":
             student_turn = self._run_in_scope("shared", self.session.start_shared_round)
-            event = _message_event("student", student_turn, channel="shared")
-            events = [event] if event["reply"] else []
-            if event["reply"]:
-                self.pending_prompt = {"mode": "shared", "question": event["reply"]}
+            raw_question = str(student_turn.get("reply", "")).strip()
+            if raw_question:
+                eval_result = self.orchestrator.evaluate_student_question(
+                    raw_question,
+                    current_slide=self.session.get_current_slide(),
+                    deck=self.session.deck,
+                )
+                if not eval_result.approved and eval_result.improved_question:
+                    student_turn["reply"] = eval_result.improved_question
+                    self.session.logger.log_event(
+                        "orchestrator_student_critique",
+                        actor="orchestrator",
+                        channel="shared",
+                        original_question=raw_question,
+                        improved_question=eval_result.improved_question,
+                        feedback=eval_result.feedback,
+                        key_concepts=eval_result.key_concepts,
+                    )
+                event = _message_event("student", student_turn, channel="shared")
+                if event["reply"]:
+                    self.pending_prompt = {"mode": "shared", "question": event["reply"]}
+                    events.append(event)
+
         elif self.auto_mode == "student":
             student_turn = self._run_in_scope("private_student", self.session.start_private_student_round)
-            event = _message_event("student", student_turn, channel="private_student")
-            events = [event] if event["reply"] else []
-            if event["reply"]:
-                self.pending_prompt = {"mode": "student", "question": event["reply"]}
-        else:
-            events = []
+            raw_question = str(student_turn.get("reply", "")).strip()
+            if raw_question:
+                eval_result = self.orchestrator.evaluate_student_question(
+                    raw_question,
+                    current_slide=self.session.get_current_slide(),
+                    deck=self.session.deck,
+                )
+                if not eval_result.approved and eval_result.improved_question:
+                    student_turn["reply"] = eval_result.improved_question
+                    self.session.logger.log_event(
+                        "orchestrator_student_critique",
+                        actor="orchestrator",
+                        channel="private_student",
+                        original_question=raw_question,
+                        improved_question=eval_result.improved_question,
+                        feedback=eval_result.feedback,
+                        key_concepts=eval_result.key_concepts,
+                    )
+                event = _message_event("student", student_turn, channel="private_student")
+                if event["reply"]:
+                    self.pending_prompt = {"mode": "student", "question": event["reply"]}
+                    events.append(event)
+
         self._persist_agent_events(events)
         return self._snapshot(events)
 
@@ -245,14 +292,69 @@ class LiveClassroomSession:
         if not self.pending_prompt:
             return self._snapshot([])
         question = self.pending_prompt["question"]
-        if self.pending_prompt["mode"] == "shared":
-            ta_turn = self._teacher_reply_after_timeout(question, channel="shared", mode="shared_classroom")
-            event = _message_event("teacher", ta_turn, channel="shared")
-        else:
-            ta_turn = self._teacher_reply_after_timeout(question, channel="private_student", mode="private_student_chat")
-            event = _message_event("teacher", ta_turn, channel="private_student")
+        mode = self.pending_prompt.get("mode", "shared")
+        scope = "shared" if mode == "shared" else "private_student"
+
+        self.session._log_event(
+            "learner_timeout",
+            actor="learner",
+            target="student",
+            channel=scope,
+            related_question=question,
+        )
+
+        history = self.channel_histories.get(scope, [])
+        plan = self.orchestrator.plan_timeout(
+            question,
+            mode=mode,
+            current_slide=self.session.get_current_slide(),
+            deck=self.session.deck,
+            chat_history=history,
+        )
+
+        events: list[dict[str, Any]] = []
+        new_artifacts: list[dict[str, Any]] = []
         self.pending_prompt = None
-        events = [event] if event["reply"] else []
+
+        for task in plan.agent_tasks:
+            task_channel = task.channel if task.channel in CONVERSATION_SCOPES else scope
+            if task.agent_name == "ta_agent":
+                ta_turn = self._teacher_reply_after_timeout(
+                    question,
+                    channel=task_channel,
+                    mode="shared_classroom" if task_channel == "shared" else "private_student_chat",
+                    instruction=task.instruction,
+                )
+                events.append(_message_event("teacher", ta_turn, channel=task_channel))
+            elif task.agent_name == "student_agent":
+                student_turn = self._run_in_scope(
+                    task_channel,
+                    lambda: self.session.chat_student(
+                        task.instruction,
+                        channel=task_channel,
+                    ),
+                )
+                events.append(_message_event("student", student_turn, channel=task_channel))
+            elif task.agent_name == "generator_agent":
+                self._handle_generator_turn(
+                    task.instruction,
+                    events,
+                    new_artifacts,
+                    channel="material",
+                    record_user_turn=False,
+                )
+
+        if not events:
+            ta_turn = self._teacher_reply_after_timeout(
+                question,
+                channel=scope,
+                mode="shared_classroom" if scope == "shared" else "private_student_chat",
+            )
+            event = _message_event("teacher", ta_turn, channel=scope)
+            if event["reply"]:
+                events.append(event)
+
+        self._merge_artifacts(new_artifacts)
         self._persist_agent_events(events)
         return self._snapshot(events)
 
@@ -271,72 +373,128 @@ class LiveClassroomSession:
         trimmed = text.strip()
         user_turn_id = message_id or f"msg_{uuid.uuid4().hex[:8]}"
 
-        if self.pending_prompt and self.pending_prompt.get("mode") == "shared" and target in {"all", "teacher"}:
-            self._persist_user_turn("shared", trimmed, intent="learner_turn", turn_id=user_turn_id, reply_to_id=reply_to_id)
-            ta_turn = self._teacher_follow_up_shared(
-                self.pending_prompt["question"],
+        target_channel = (
+            "private_ta" if target == "teacher"
+            else "private_student" if target == "student"
+            else "material" if target == "generator"
+            else "shared"
+        )
+        relevant_history = self.channel_histories.get(target_channel, [])
+
+        plan = self.orchestrator.plan(
+            trimmed,
+            current_slide=self.session.get_current_slide(),
+            deck=self.session.deck,
+            chat_history=relevant_history,
+            target_hint=target,
+            reply_to_id=reply_to_id,
+            pending_prompt=self.pending_prompt,
+        )
+
+        if plan.guardrail_status == "rejected":
+            self._persist_user_turn(
+                target_channel,
                 trimmed,
-                user_turn_id=user_turn_id,
+                intent="guardrail_rejected",
+                turn_id=user_turn_id,
                 reply_to_id=reply_to_id,
             )
-            self.pending_prompt = None
-            events.append(_message_event("teacher", ta_turn, channel="shared"))
-        elif target == "teacher":
-            self._persist_user_turn("private_ta", trimmed, intent="question", turn_id=user_turn_id, reply_to_id=reply_to_id)
-            ta_turn = self._teacher_private_reply(
-                trimmed,
-                channel="private_ta",
-                user_turn_id=user_turn_id,
-                reply_to_id=reply_to_id,
-            )
-            events.append(_message_event("teacher", ta_turn, channel="private_ta"))
-        elif target == "generator":
-            self._handle_generator_turn(
-                trimmed,
-                events,
-                new_artifacts,
-                channel="material",
-                user_turn_id=user_turn_id,
-                reply_to_id=reply_to_id,
-            )
-        elif target == "student":
-            if self.pending_prompt and self.pending_prompt.get("mode") == "student":
-                self._persist_user_turn("private_student", trimmed, intent="answer", turn_id=user_turn_id, reply_to_id=reply_to_id)
-                student_feedback = self._run_in_scope(
-                    "private_student",
-                    lambda: self.session.finish_private_student_round(
+            refusal_reply = plan.reply or "Nội dung yêu cầu không phù hợp hoặc không liên quan đến bài giảng. Vui lòng đặt câu hỏi liên quan đến nội dung học tập!"
+            refusal_agent = "student" if target == "student" else "teacher"
+            refusal_event = {
+                "id": f"msg_{uuid.uuid4().hex[:8]}",
+                "kind": "message",
+                "agent": refusal_agent,
+                "channel": target_channel,
+                "intent": "guardrail_refusal",
+                "reply": refusal_reply,
+                "citations": [],
+                "active_recall": False,
+                "reply_to_id": user_turn_id,
+            }
+            events.append(refusal_event)
+            self._persist_agent_events(events)
+            return self._snapshot(events)
+
+        self._persist_user_turn(
+            target_channel,
+            trimmed,
+            intent="learner_turn",
+            turn_id=user_turn_id,
+            reply_to_id=reply_to_id,
+        )
+
+        for task in plan.agent_tasks:
+            task_channel = task.channel if task.channel in CONVERSATION_SCOPES else target_channel
+            task_reply_to = task.reply_to_id or user_turn_id
+
+            if task.agent_name == "ta_agent":
+                if self.pending_prompt and self.pending_prompt.get("mode") == "shared" and task_channel == "shared":
+                    ta_turn = self._teacher_follow_up_shared(
                         self.pending_prompt["question"],
-                        trimmed,
-                        msg_id=user_turn_id,
-                        reply_to_id=reply_to_id,
-                    ),
+                        task.instruction,
+                        user_turn_id=user_turn_id,
+                        reply_to_id=task_reply_to,
+                    )
+                    self.pending_prompt = None
+                    events.append(_message_event("teacher", ta_turn, channel=task_channel, reply_to_id=task_reply_to))
+                else:
+                    ta_turn = self._teacher_private_reply(
+                        task.instruction,
+                        channel=task_channel,
+                        user_turn_id=user_turn_id,
+                        reply_to_id=task_reply_to,
+                    )
+                    events.append(_message_event("teacher", ta_turn, channel=task_channel, reply_to_id=task_reply_to))
+
+            elif task.agent_name == "student_agent":
+                if self.pending_prompt and self.pending_prompt.get("mode") == "student":
+                    student_feedback = self._run_in_scope(
+                        "private_student",
+                        lambda: self.session.finish_private_student_round(
+                            self.pending_prompt["question"],
+                            task.instruction,
+                            msg_id=user_turn_id,
+                            reply_to_id=task_reply_to,
+                        ),
+                    )
+                    self.pending_prompt = None
+                    events.append(_message_event("student", student_feedback, channel="private_student", reply_to_id=task_reply_to))
+                else:
+                    student_turn = self._run_in_scope(
+                        task_channel,
+                        lambda: self.session.chat_student(
+                            task.instruction,
+                            channel=task_channel,
+                            msg_id=user_turn_id,
+                            reply_to_id=task_reply_to,
+                        ),
+                    )
+                    events.append(_message_event("student", student_turn, channel=task_channel, reply_to_id=task_reply_to))
+
+            elif task.agent_name == "generator_agent":
+                self._handle_generator_turn(
+                    task.instruction,
+                    events,
+                    new_artifacts,
+                    channel="material",
+                    user_turn_id=user_turn_id,
+                    reply_to_id=task_reply_to,
+                    record_user_turn=False,
                 )
-                self.pending_prompt = None
-                events.append(_message_event("student", student_feedback, channel="private_student"))
-            else:
-                student_turn = self._run_in_scope("private_student", self.session.start_private_student_round)
-                event = _message_event("student", student_turn, channel="private_student")
-                if event["reply"]:
-                    self.pending_prompt = {"mode": "student", "question": event["reply"]}
-                    events.append(event)
-        elif any(keyword in trimmed.lower() for keyword in ("quiz", "flashcard", "flash card", "mindmap", "mind map")):
-            self._handle_generator_turn(
-                trimmed,
-                events,
-                new_artifacts,
-                channel="material",
-                user_turn_id=user_turn_id,
-                reply_to_id=reply_to_id,
-            )
-        else:
-            self._persist_user_turn("shared", trimmed, intent="question", turn_id=user_turn_id, reply_to_id=reply_to_id)
-            ta_turn = self._teacher_private_reply(
-                trimmed,
-                channel="shared",
-                user_turn_id=user_turn_id,
-                reply_to_id=reply_to_id,
-            )
-            events.append(_message_event("teacher", ta_turn, channel="shared"))
+
+        if not events and plan.reply:
+            events.append({
+                "id": f"msg_{uuid.uuid4().hex[:8]}",
+                "kind": "message",
+                "agent": "teacher",
+                "channel": target_channel,
+                "intent": "orchestrator_reply",
+                "reply": plan.reply,
+                "citations": [],
+                "active_recall": False,
+                "reply_to_id": user_turn_id,
+            })
 
         self._merge_artifacts(new_artifacts)
         self._persist_agent_events(events)
@@ -351,8 +509,10 @@ class LiveClassroomSession:
         channel: str = "material",
         user_turn_id: str | None = None,
         reply_to_id: str | None = None,
+        record_user_turn: bool = True,
     ) -> None:
-        self._persist_user_turn(channel, trimmed, intent="generate_material", turn_id=user_turn_id, reply_to_id=reply_to_id)
+        if record_user_turn:
+            self._persist_user_turn(channel, trimmed, intent="generate_material", turn_id=user_turn_id, reply_to_id=reply_to_id)
         types = _infer_material_types(trimmed)
         mat_type = types[0] if len(types) == 1 else None
         result = self._run_in_scope(channel, lambda: self.session.generate_material(mat_type, trimmed))
@@ -491,7 +651,14 @@ class LiveClassroomSession:
             ),
         )
 
-    def _teacher_reply_after_timeout(self, student_question: str, *, channel: str, mode: str) -> dict[str, Any]:
+    def _teacher_reply_after_timeout(
+        self,
+        student_question: str,
+        *,
+        channel: str,
+        mode: str,
+        instruction: str | None = None,
+    ) -> dict[str, Any]:
         scope = "shared" if channel == "shared" else "private_student"
         self.session._log_event(
             "learner_timeout",
@@ -500,16 +667,17 @@ class LiveClassroomSession:
             channel=channel,
             related_question=student_question,
         )
+        task_prompt = instruction or (
+            "Student agent đã hỏi người học nhưng sau thời gian quy định vẫn không nhận được câu trả lời.\n"
+            "timeout_status: timed_out\n"
+            f"Câu hỏi cần TA trả lời thay: {student_question}\n"
+            "Hãy nói rõ rằng đã hết thời gian và trả lời ngắn gọn, chính xác thay cho người học."
+        )
         return self._run_ta_turn(
             scope=scope,
             channel=channel,
             mode=mode,
-            task=(
-                "Student agent đã hỏi người học nhưng sau 10 giây vẫn không nhận được câu trả lời.\n"
-                "timeout_status: timed_out\n"
-                f"Câu hỏi cần TA trả lời thay: {student_question}\n"
-                "Hãy nói rõ rằng đã hết thời gian và trả lời ngắn gọn, chính xác thay cho người học."
-            ),
+            task=task_prompt,
         )
 
     def _run_ta_turn(
@@ -732,10 +900,12 @@ def create_live_classroom_session(
         slide_number=session.current_slide,
         slide_title=session.get_current_slide().title,
     )
+    orchestrator = OrchestratorAgent(provider, model=model)
     return LiveClassroomSession(
         session_id=session_uuid,
         artifact_id=artifact_id,
         lesson_name=lesson.name,
         session=session,
         store=store,
+        orchestrator=orchestrator,
     )

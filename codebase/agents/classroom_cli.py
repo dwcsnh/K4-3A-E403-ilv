@@ -329,6 +329,43 @@ class ClassroomSession:
         self._log_agent_message("student", response, channel="private_student", target="learner")
         return response
 
+    def chat_student(
+        self,
+        message: str,
+        *,
+        channel: str = "private_student",
+        msg_id: str | None = None,
+        reply_to_id: str | None = None,
+    ) -> dict[str, Any]:
+        self._log_event(
+            "learner_message",
+            actor="learner",
+            target="student",
+            channel=channel,
+            message_kind="chat",
+            message=message,
+        )
+        user_msg_id = self._record_history("Learner", message, msg_id=msg_id)
+        reply_hint = f"\n(Người học đang reply tin nhắn: {reply_to_id})" if reply_to_id else ""
+        prompt = self._build_prompt(
+            mode="private_student_chat" if channel == "private_student" else "shared_classroom",
+            task=(
+                "Bạn là bạn học (Student Agent - Bảo Nam). Người học đang nhắn tin hoặc trao đổi với bạn.\n"
+                f"Nội dung người học nhắn: {message}{reply_hint}\n"
+                "Hãy phản hồi như một người bạn học tích cực, hào hứng, thân thiện theo đúng response contract."
+            ),
+        )
+        response = self._run_json_agent(self.student_agent, prompt)
+        if reply_to_id and not response.get("reply_to_id"):
+            response["reply_to_id"] = reply_to_id
+        elif not response.get("reply_to_id"):
+            response["reply_to_id"] = user_msg_id
+        if response.get("reply"):
+            agent_msg_id = self._record_history("Student Agent", response["reply"])
+            response["id"] = agent_msg_id
+        self._log_agent_message("student", response, channel=channel, target="learner")
+        return response
+
     def generate_material(self, material_type: str | None = None, instructions: str = "") -> dict[str, Any]:
         mat_type = (material_type or "").strip().lower()
         if mat_type not in {"quiz", "flashcard", "mindmap", "all"}:
