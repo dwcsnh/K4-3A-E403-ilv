@@ -54,15 +54,25 @@ export function ChatStream({
         {messages.map((msg) => {
           const isUser = msg.senderType === "user";
           return (
-            <div key={msg.id} id={`msg-${msg.id}`} className={`msg-row${isUser ? " user" : ""}`}>
-              <div className={`msg-avatar${isUser ? " user-av" : " avatar-" + msg.senderType}`}>
+            <div
+              key={msg.id}
+              id={`msg-${msg.id}`}
+              className={`msg-row${isUser ? " user" : ""}`}
+            >
+              <div
+                className={`msg-avatar${isUser ? " user-av" : " avatar-" + msg.senderType}`}
+              >
                 {isUser ? "HV" : msg.avatar}
               </div>
               <div className="msg-content-block">
                 <div className="msg-author-tag">
                   <span className="msg-author-name">{msg.senderName}</span>
                   {!isUser && (
-                    <span className={`msg-role-badge ${roleBadgeClass(msg.senderType)}`}>{msg.role}</span>
+                    <span
+                      className={`msg-role-badge ${roleBadgeClass(msg.senderType)}`}
+                    >
+                      {msg.role}
+                    </span>
                   )}
                   <span className="msg-time">{msg.time}</span>
                   <button
@@ -71,7 +81,14 @@ export function ChatStream({
                     onClick={() => onInitiateReply?.(msg)}
                     title="Trả lời tin nhắn này"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
                       <polyline points="9 17 4 12 9 7"></polyline>
                       <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
                     </svg>
@@ -89,33 +106,50 @@ export function ChatStream({
                     >
                       <div className="msg-quote-bar" />
                       <div className="msg-quote-body">
-                        <span className="msg-quote-author">{msg.replyTo.senderName}</span>
-                        <p className="msg-quote-text truncate">{msg.replyTo.text}</p>
+                        <span className="msg-quote-author">
+                          {msg.replyTo.senderName}
+                        </span>
+                        <p className="msg-quote-text truncate">
+                          {msg.replyTo.text}
+                        </p>
                       </div>
                     </div>
                   )}
                   <span dangerouslySetInnerHTML={{ __html: msg.text }} />
-                  
-                  {/* {msg.citation && (
+
+                  {msg.citation && (
                     <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/70 text-text-secondary text-xs rounded-full border border-border-focus/30 shadow-sm">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                       </svg>
                       {msg.citation}
                     </div>
-                  )} */}
+                  )}
 
                   {msg.activeRecallPrompt && (
                     <div className="active-recall-box">
-                      🎯 <strong>Thử thách Active Recall:</strong> Bạn hãy thử tự trả lời câu hỏi của bạn Nam xem
-                      sao! Nhớ lại kiến thức mà không nhìn sách là cách ghi nhớ tốt nhất.
+                      🎯 <strong>Thử thách Active Recall:</strong> Bạn hãy thử
+                      tự trả lời câu hỏi của bạn Nam xem sao! Nhớ lại kiến thức
+                      mà không nhìn sách là cách ghi nhớ tốt nhất.
                     </div>
                   )}
 
                   {msg.hasArtifactNotice && (
                     <div className="artifact-notification-card">
-                      <span style={{ fontSize: 12, color: "var(--generator-color)" }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "var(--generator-color)",
+                        }}
+                      >
                         ✨ Đã tự động tạo học liệu ôn tập cho bài giảng
                       </span>
                       <Link
