@@ -49,9 +49,14 @@ pip install -r requirements.txt
 ```
 
 **Bước 4: Chạy server**
+
+Backend cần MongoDB chạy ở `mongodb://localhost:27017` (đổi bằng biến `CLASSROOM_MONGODB_URI`).
+
 ```bash
-python classroom_api.py
+python classroom_gateway.py
 ```
+
+Server lắng nghe HTTP và WebSocket (`/ws/classroom`) ở cổng `8000`.
 
 ## Frontend project
 
